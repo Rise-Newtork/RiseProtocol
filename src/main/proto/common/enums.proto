@@ -1,0 +1,28 @@
+syntax = "proto3";
+package life;
+
+option java_package = "dev.saltt.common.api.proto";
+option java_multiple_files = true;
+
+//dont renumber
+enum LifeGameType {
+  LIFE_GAME_TYPE_UNSPECIFIED = 0;
+  SURVIVAL_GAMES = 1;
+}
+
+enum ServerRegion {
+  REGION_UNSPECIFIED = 0;
+  NORTH_AMERICA = 1;
+}
+
+enum GameStatus {
+  GAME_STATUS_UNSPECIFIED = 0;   // "unset" default — kept as the sentinel
+  SERVER_LOADING = 1;
+  WAITING_FOR_PLAYERS = 2;
+  STARTING = 3;
+  IN_PROGRESS = 4;
+  ENDING = 5;
+  ENDED = 6;
+  SERVER_CLOSING = 7;
+  SERVER_CRASHING = 8;
+}

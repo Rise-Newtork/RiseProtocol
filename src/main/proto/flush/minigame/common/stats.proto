@@ -1,0 +1,13 @@
+syntax = "proto3";
+package life;
+
+option java_package = "dev.saltt.common.api.proto";
+option java_multiple_files = true;
+
+message PvpStatsMessage {
+  string uuid = 1;
+  int32  kills = 2;
+  int32  assists = 3;
+  int64  damage_dealt = 4;
+  int64  damage_taken = 5;
+}

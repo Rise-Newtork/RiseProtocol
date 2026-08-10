@@ -1,0 +1,17 @@
+syntax = "proto3";
+package life;
+
+import "player/lifeplayer.proto";
+
+option java_package = "dev.saltt.common.api.proto";
+option java_multiple_files = true;
+
+service LifePlayerService {
+  rpc PostPlayer(LifePlayerMessage) returns (PostPlayerAck);   // store
+  rpc GetPlayer(GetPlayerRequest) returns (LifePlayerMessage); // by uuid
+  rpc GetPlayerByName(GetPlayerByNameRequest) returns (LifePlayerMessage);
+}
+
+message PostPlayerAck        { string uuid = 1; bool persisted = 2; }
+message GetPlayerRequest     { string uuid = 1; }
+message GetPlayerByNameRequest { string username = 1; }
