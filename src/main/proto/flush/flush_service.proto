@@ -1,0 +1,17 @@
+syntax = "proto3";
+package life;
+
+import "flush/flush.proto";
+
+option java_package = "dev.saltt.common.api.proto";
+option java_multiple_files = true;
+
+service FlushService {
+  rpc Flush(FlushEnvelope) returns (FlushAck);
+}
+
+message FlushAck {
+  string match_id = 1;
+  bool   persisted = 2;
+  string error = 3;
+}

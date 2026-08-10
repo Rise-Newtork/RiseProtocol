@@ -1,0 +1,25 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+import "flush/minigame/common/stats.proto";
+
+option java_package = "dev.saltt.common.api.proto";
+option java_multiple_files = true;
+
+message SurvivalGamesPayload {
+  repeated SurvivalGamesPlayerFlushMessage players = 1;
+}
+
+message SurvivalGamesPlayerFlushMessage {
+  string player_uuid = 1;
+  string match_id = 2;
+  string team_id = 3;
+  int64 time_alive = 4;
+
+  string cause_of_death = 5;
+  string killer_uuid = 6;
+
+  PvpStatsMessage player_stats = 10;
+
+}

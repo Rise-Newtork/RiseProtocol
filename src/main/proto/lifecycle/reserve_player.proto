@@ -1,0 +1,21 @@
+syntax = "proto3";
+package life;
+
+import "common/enums.proto";
+
+option java_package = "dev.saltt.common.api.proto";
+option java_multiple_files = true;
+
+message ReservePlayerMessage {
+  string       match_id = 1;
+  LifeGameType game_type = 2;
+  string       player_id = 3; //uuid
+}
+
+message ReservePlayerAck {
+  bool acknowledged = 1;
+}
+
+service RegisterPlayerReserveService {
+  rpc ReservePlayer(ReservePlayerMessage) returns (ReservePlayerAck);
+}

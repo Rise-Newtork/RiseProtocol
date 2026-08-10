@@ -1,0 +1,22 @@
+syntax = "proto3";
+package life;
+
+import "common/enums.proto";
+
+option java_package = "dev.saltt.common.api.proto";
+option java_multiple_files = true;
+
+message RegisterServerMessage {
+  string       match_id = 1;
+  LifeGameType game_type = 2;
+  int32     max_players = 3;
+  int32 minimum_starting_players = 4;
+}
+
+message RegisterServerAck {
+  bool acknowledged = 1;
+}
+
+service RegisterServerRegistrarService {
+  rpc RegisterServer(RegisterServerMessage) returns (RegisterServerAck);
+}
