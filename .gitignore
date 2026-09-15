@@ -1,0 +1,14 @@
+.gradle/
+build/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Python build output. Safe to ignore: the wheel target sets ignore-vcs = true,
+# so hatchling still packages the generated stubs.
+rise_protocol/
+dist/
+*.egg-info/
+__pycache__/

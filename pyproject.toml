@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling", "grpcio-tools>=1.66"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rise-protocol"
+version = "1.0.0"
+description = "Python stubs for the Rise protocol"
+requires-python = ">=3.10"
+dependencies = ["grpcio>=1.66", "protobuf>=5.27"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["rise_protocol"]
+# The package is generated at build time, so a .gitignore entry for it must
+# not be able to silently empty the wheel.
+ignore-vcs = true
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
