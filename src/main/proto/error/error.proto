@@ -1,0 +1,27 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+import "common/common.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+enum ErrorSeverity {
+  ERROR_SEVERITY_UNSPECIFIED = 0;
+  ERROR_SEVERITY_WARN = 1;
+  ERROR_SEVERITY_ERROR = 2;
+  ERROR_SEVERITY_CRITICAL = 3;
+  ERROR_SEVERITY_FATAL = 4;
+}
+
+message ErrorMessage {
+  ServerMeta serverMeta = 1;
+  string errorCode = 2;
+  string error = 3;
+  string stackTrace = 4;
+  ErrorSeverity severity = 5;
+  google.protobuf.Timestamp occurredAt = 8;
+
+  ServerAcceptedType serverType = 9;
+}
