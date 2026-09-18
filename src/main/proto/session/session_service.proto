@@ -1,0 +1,30 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the session broker, the one process holding the Hytale account's refresh
+// token. A container creator calls it once per container it sets up, and passes the two
+// tokens into the container as HYTALE_SERVER_SESSION_TOKEN and HYTALE_SERVER_IDENTITY_TOKEN.
+// The server refreshes the session itself from then on.
+service SessionService {
+  rpc MintGameSession(MintGameSessionRequest) returns (MintGameSessionAck);
+}
+
+message MintGameSessionRequest {
+  string requestId = 1;   // the container this is for, for the broker's log
+  string profileUuid = 2; // optional: a specific profile; blank lets the broker rotate
+}
+
+message MintGameSessionAck {
+  bool success = 1;
+  string error = 2;
+  string sessionToken = 3;
+  string identityToken = 4;
+  google.protobuf.Timestamp expiresAt = 5;
+  string profileUuid = 6;
+  string profileName = 7;
+}
