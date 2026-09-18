@@ -19,7 +19,8 @@ message RegisterContainerCreatorRequest {
 message RegisterContainerCreatorAck {
   bool success = 1;
   string error = 2;
-  google.protobuf.Duration heartbeatInterval = 3;
+  string containerName = 3; //will be used so the mm knows if the container started properly
+  google.protobuf.Duration heartbeatInterval = 4;
 }
 
 message DeregisterContainerCreatorRequest {
