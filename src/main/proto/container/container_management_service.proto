@@ -1,0 +1,19 @@
+syntax = "proto3";
+package life;
+
+import "container/container_management.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the control plane; a node's container creator calls it on startup
+// and again on shutdown.
+service ContainerRegistryService {
+  rpc RegisterContainerCreator(RegisterContainerCreatorRequest) returns (RegisterContainerCreatorAck);
+  rpc DeregisterContainerCreator(DeregisterContainerCreatorRequest) returns (DeregisterContainerCreatorAck);
+}
+
+// Hosted by each container creator; the control plane calls it.
+service ContainerManagementService {
+  rpc SetupContainer(SetupContainerRequest) returns (SetupContainerAck);
+}
