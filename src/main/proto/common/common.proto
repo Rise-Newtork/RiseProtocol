@@ -17,9 +17,18 @@ enum ServerAcceptedType {
 
 message ServerMeta {
   string serverId = 1;
-  string nodeId = 2;
-  double serverLatitude = 3;
-  double serverLongitude = 4;
+  NodeMeta nodeMeta = 2;
+}
+
+message NodeMeta {
+  string nodeId = 1;
+  double nodeLatitude = 2;
+  double nodeLongitude = 3;
+}
+
+message IpPort {
+  string host = 1;
+  int32 port = 2;
 }
 
 enum GameStatus {
