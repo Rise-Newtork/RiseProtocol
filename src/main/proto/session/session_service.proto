@@ -12,11 +12,21 @@ option java_multiple_files = true;
 // The server refreshes the session itself from then on.
 service SessionService {
   rpc MintGameSession(MintGameSessionRequest) returns (MintGameSessionAck);
+
+  // Terminates a session the broker minted, so it stops counting against the
+  // account's concurrent-session limit. Called when the container exits.
+  rpc ReleaseGameSession(ReleaseGameSessionRequest) returns (ReleaseGameSessionAck);
+
+  // Releases every session still held for a node. A container creator calls this at
+  // startup, alongside reaping leftover containers, so sessions its previous process
+  // minted are not held until they expire.
+  rpc ReleaseNodeSessions(ReleaseNodeSessionsRequest) returns (ReleaseNodeSessionsAck);
 }
 
 message MintGameSessionRequest {
-  string requestId = 1;   // the container this is for, for the broker's log
-  string profileUuid = 2; // optional: a specific profile; blank lets the broker rotate
+  string requestId = 1;   // the container this is for; also how the session is released
+  string profileUuid = 2; // optional: a specific profile; blank uses the broker's default
+  string nodeId = 3;      // the node the container runs on, so its sessions can be released together
 }
 
 message MintGameSessionAck {
@@ -27,4 +37,23 @@ message MintGameSessionAck {
   google.protobuf.Timestamp expiresAt = 5;
   string profileUuid = 6;
   string profileName = 7;
+}
+
+message ReleaseGameSessionRequest {
+  string requestId = 1; // the id the session was minted for
+}
+
+message ReleaseGameSessionAck {
+  bool success = 1;
+  string error = 2;
+}
+
+message ReleaseNodeSessionsRequest {
+  string nodeId = 1;
+}
+
+message ReleaseNodeSessionsAck {
+  bool success = 1;
+  string error = 2;
+  int32 released = 3;
 }
