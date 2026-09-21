@@ -19,7 +19,7 @@ message RegisterContainerCreatorRequest {
 message RegisterContainerCreatorAck {
   bool success = 1;
   string error = 2;
-  string containerName = 3; //will be used so the mm knows if the container started properly
+  reserved 3; // containerName, which is per container and now lives on SetupContainerAck
   google.protobuf.Duration heartbeatInterval = 4;
 }
 
@@ -43,5 +43,24 @@ message SetupContainerAck {
   string error = 2;
   IpPort managementEndpoint = 3; //the endpoint the grpc inbound on the hytale server created will be
   IpPort gameEndpoint = 4; //games port an ip
+  string containerName = 5; // the container's identity from here on: the matchmaker matches the
+                            // server's sign-in against it, and it is what the creator labels
+                            // and logs. Set by the creator; the Docker id is an implementation detail.
+}
+
+// Everything the Rise mod inside a container needs to know about itself. The creator
+// serialises it to JSON into the container's environment as RISE_SERVER_META; the image's
+// entrypoint writes that string to servermeta.json for the mod to read with the generated
+// JSON parser, so both ends share this one definition.
+message ContainerMeta {
+  string containerName = 1;
+  string requestId = 2;
+  NodeMeta nodeMeta = 3;
+  repeated ServerAcceptedType serverTypes = 4;
+  IpPort gameEndpoint = 5;         // what players connect to: the node's public host and port
+  IpPort managementEndpoint = 6;   // what the control plane reaches the mod's gRPC on
+  int32 gamePort = 7;              // what the server binds inside the container
+  int32 managementPort = 8;        // what the mod binds inside the container
+  IpPort controlPlaneEndpoint = 9; // where the mod signs in
 }
 
