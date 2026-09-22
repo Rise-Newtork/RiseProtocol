@@ -69,3 +69,12 @@ message ContainerMeta {
   IpPort controlPlaneEndpoint = 9; // where the mod signs in
 }
 
+message DestroyContainerRequest {
+  string containerName = 1; // from SetupContainerAck
+  string reason = 2;
+}
+
+message DestroyContainerAck {
+  bool success = 1;
+  string error = 2;
+}

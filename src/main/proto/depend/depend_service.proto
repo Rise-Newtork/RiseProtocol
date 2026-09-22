@@ -1,0 +1,32 @@
+syntax = "proto3";
+package life;
+
+import "common/common.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the control plane; a node's DependSync calls it once per sync cycle that
+// changed something, so the affected server types can be rolled.
+service DependSyncService {
+  rpc NotifyUpdate(DependUpdate) returns (DependUpdateAck);
+}
+
+enum DependUpdateKind {
+  DEPEND_UPDATE_UNSPECIFIED = 0;
+  DEPEND_UPDATE_DEPENDENCIES = 1; // mods, worlds or configs changed
+  DEPEND_UPDATE_SERVER = 2;       // the Hytale build changed; affects every type
+}
+
+message DependUpdate {
+  NodeMeta nodeMeta = 1;
+  DependUpdateKind kind = 2;
+  repeated ServerAcceptedType serverTypes = 3; // SERVER_TYPE_UNSPECIFIED alone means all
+  string version = 4;          // the Hytale build, for SERVER updates
+  string manifestRevision = 5; // for DEPENDENCIES updates
+}
+
+message DependUpdateAck {
+  bool success = 1;
+  string error = 2;
+}

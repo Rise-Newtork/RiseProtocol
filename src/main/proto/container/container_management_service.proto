@@ -16,4 +16,6 @@ service ContainerRegistryService {
 // Hosted by each container creator; the control plane calls it.
 service ContainerManagementService {
   rpc SetupContainer(SetupContainerRequest) returns (SetupContainerAck);
+  // Stops the server gracefully and removes the container. Unknown names succeed.
+  rpc DestroyContainer(DestroyContainerRequest) returns (DestroyContainerAck);
 }
