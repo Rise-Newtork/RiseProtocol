@@ -62,6 +62,23 @@ Point git at it instead:
 git config --global url."https://x-access-token:<TOKEN>@github.com/".insteadOf "https://github.com/"
 ```
 
+## Enum numbers are not enum order
+
+`ErrorSeverity` gained `ERROR_SEVERITY_INFO` in v1.5.0. It is the *mildest*
+level but carries value **5**, because the other four were already in production
+and renumbering them would have made every un-redeployed server's `WARN` arrive
+as an `INFO`.
+
+So: never rank severities by comparing the raw number — `INFO` would sort above
+`FATAL`. Map through a table. The order is
+
+```
+UNSPECIFIED(0) < INFO(5) < WARN(1) < ERROR(2) < CRITICAL(3) < FATAL(4)
+```
+
+The same rule applies to any enum here that gets a value inserted mid-range
+later. Adding to the end is backwards compatible; renumbering is not.
+
 ## Making a release
 
 Keep `version` in `build.gradle.kts` and `pyproject.toml` in step with the tag,

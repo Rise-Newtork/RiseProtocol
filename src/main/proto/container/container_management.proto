@@ -14,6 +14,7 @@ message RegisterContainerCreatorRequest {
 
   repeated ServerAcceptedType acceptedTypes = 4;
   int32 maxContainers = 5;
+  int32 memoryBudgetMb = 6; // total memory the node gives to game containers; 0 means uncapped
 }
 
 message RegisterContainerCreatorAck {
@@ -36,8 +37,12 @@ message DeregisterContainerCreatorAck {
 message SetupContainerRequest {
   string requestId = 1;
   repeated ServerAcceptedType serverType = 2;
+  int32 memoryMb = 3; // the container's memory limit; 0 takes the node's default
 }
 
+// success means the Hytale server inside has booted, not just that the container started.
+// The call can take up to the creator's start timeout, so set a deadline above it; a
+// cancelled call has its container destroyed.
 message SetupContainerAck {
   bool success = 1;
   string error = 2;
