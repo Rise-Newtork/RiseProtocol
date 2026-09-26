@@ -6,7 +6,7 @@ plugins {
 
 // JitPack coordinates: com.github.Rise-Newtork:RiseProtocol:<tag>
 group = "com.github.Rise-Newtork"
-version = "v1.6.0"
+version = "v1.7.0"
 
 repositories {
     mavenCentral()

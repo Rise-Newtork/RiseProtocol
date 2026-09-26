@@ -1,0 +1,31 @@
+syntax = "proto3";
+package life;
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the control plane; the manager mod inside a game container calls SignIn once
+// the server is up and SignOut as it shuts down. containerName comes from servermeta.json.
+service ServerRegistryService {
+  rpc SignIn(ServerSignInRequest) returns (ServerSignInAck);
+  rpc SignOut(ServerSignOutRequest) returns (ServerSignOutAck);
+}
+
+message ServerSignInRequest {
+  string containerName = 1;
+}
+
+message ServerSignInAck {
+  bool success = 1;
+  string error = 2;
+}
+
+message ServerSignOutRequest {
+  string containerName = 1;
+  string reason = 2;
+}
+
+message ServerSignOutAck {
+  bool success = 1;
+  string error = 2;
+}
