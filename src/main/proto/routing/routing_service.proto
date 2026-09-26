@@ -1,0 +1,23 @@
+syntax = "proto3";
+package life;
+
+import "common/common.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the control plane; a proxy asks where a player who has just authenticated goes.
+service PlayerRoutingService {
+  rpc GetPlayerDestination(GetPlayerDestinationRequest) returns (GetPlayerDestinationAck);
+}
+
+message GetPlayerDestinationRequest {
+  string playerUuid = 1;
+}
+
+message GetPlayerDestinationAck {
+  bool success = 1;
+  string error = 2;
+  string containerName = 3;
+  IpPort gameEndpoint = 4;
+}
