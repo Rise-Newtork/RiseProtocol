@@ -4,15 +4,35 @@ package life;
 option java_package = "com.risehytale.api";
 option java_multiple_files = true;
 
+// The game types a minigame server runs; a server may accept several. The hub values are
+// deprecated since v1.9.0 and stay only so their numbers are never reused: hubs are typed
+// with HubServerType instead.
 enum ServerAcceptedType {
   SERVER_TYPE_UNSPECIFIED = 0;
   SERVER_TYPE_STICK_GAME = 1;
   SERVER_TYPE_DUEL_1V1 = 2;
   SERVER_TYPE_DUEL_2v2 = 3;
-  SERVER_TYPE_TUTORIAL = 4;
+  SERVER_TYPE_TUTORIAL = 4 [deprecated = true]; // use HUB_SERVER_TYPE_TUTORIAL
   SERVER_TYPE_TRAINING = 5;
-  SERVER_TYPE_HUB = 6;
-  SERVER_TYPE_HUB_PVP = 7;
+  SERVER_TYPE_HUB = 6 [deprecated = true];      // use HUB_SERVER_TYPE_HUB
+  SERVER_TYPE_HUB_PVP = 7 [deprecated = true];  // use HUB_SERVER_TYPE_HUB_PVP
+}
+
+// The kind of a persistent server, one with no game lifecycle. A hub server is exactly one kind.
+enum HubServerType {
+  HUB_SERVER_TYPE_UNSPECIFIED = 0;
+  HUB_SERVER_TYPE_HUB = 1;
+  HUB_SERVER_TYPE_HUB_PVP = 2;
+  HUB_SERVER_TYPE_TUTORIAL = 3;
+}
+
+// What a container runs: a minigame server accepting some game types, or a hub of one kind.
+message GameServerKind {
+  repeated ServerAcceptedType types = 1;
+}
+
+message HubServerKind {
+  HubServerType type = 1;
 }
 
 message ServerMeta {

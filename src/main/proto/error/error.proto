@@ -31,4 +31,5 @@ message ErrorMessage {
   google.protobuf.Timestamp occurredAt = 8;
 
   ServerAcceptedType serverType = 9;
+  HubServerType hubServerType = 10; // set by hub servers instead of serverType
 }

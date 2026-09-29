@@ -24,6 +24,7 @@ message DependUpdate {
   repeated ServerAcceptedType serverTypes = 3; // SERVER_TYPE_UNSPECIFIED alone means all
   string version = 4;          // the Hytale build, for SERVER updates
   string manifestRevision = 5; // for DEPENDENCIES updates
+  repeated HubServerType hubServerTypes = 6; // hub kinds affected, alongside serverTypes
 }
 
 message DependUpdateAck {

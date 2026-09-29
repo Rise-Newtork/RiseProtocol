@@ -12,9 +12,10 @@ message RegisterContainerCreatorRequest {
   NodeMeta nodeMeta = 1;
   IpPort managementEndpoint = 2; //the endpoint the grpc inbound on the hytale server created will be
 
-  repeated ServerAcceptedType acceptedTypes = 4;
+  repeated ServerAcceptedType acceptedTypes = 4; // game types this node runs
   int32 maxContainers = 5;
   int32 memoryBudgetMb = 6; // total memory the node gives to game containers; 0 means uncapped
+  repeated HubServerType acceptedHubTypes = 7; // hub kinds this node runs
 }
 
 message RegisterContainerCreatorAck {
@@ -36,8 +37,13 @@ message DeregisterContainerCreatorAck {
 
 message SetupContainerRequest {
   string requestId = 1;
-  repeated ServerAcceptedType serverType = 2;
+  repeated ServerAcceptedType serverType = 2 [deprecated = true]; // since v1.9.0: set kind instead
   int32 memoryMb = 3; // the container's memory limit; 0 takes the node's default
+  // Which manager mod the container runs and what it is: a minigame server or a hub.
+  oneof kind {
+    GameServerKind game = 4;
+    HubServerKind hub = 5;
+  }
 }
 
 // success means the Hytale server inside has booted, not just that the container started.
@@ -61,12 +67,17 @@ message ContainerMeta {
   string containerName = 1;
   string requestId = 2;
   NodeMeta nodeMeta = 3;
-  repeated ServerAcceptedType serverTypes = 4;
+  repeated ServerAcceptedType serverTypes = 4 [deprecated = true]; // since v1.9.0: read kind instead
   IpPort gameEndpoint = 5;         // what players connect to: the node's public host and port
   IpPort managementEndpoint = 6;   // what the control plane reaches the mod's gRPC on
   int32 gamePort = 7;              // what the server binds inside the container
   int32 managementPort = 8;        // what the mod binds inside the container
   IpPort controlPlaneEndpoint = 9; // where the mod signs in
+  // Copied from the SetupContainerRequest; the hub mod reads hub.type to learn what kind it is.
+  oneof kind {
+    GameServerKind game = 10;
+    HubServerKind hub = 11;
+  }
 }
 
 message DestroyContainerRequest {
