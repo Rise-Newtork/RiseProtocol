@@ -1,0 +1,191 @@
+syntax = "proto3";
+package life;
+
+import "common/common.proto";
+import "database/player.proto";
+import "database/economy.proto";
+import "database/match.proto";
+import "database/stats.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// The database API, hosted by the matchmaker. Servers cache; every call here goes straight to
+// Postgres, and every write is safe to retry.
+
+service PlayerService {
+  rpc RecordLogin(RecordLoginRequest) returns (PlayerAck);
+  rpc GetPlayer(GetPlayerRequest) returns (PlayerAck);
+  rpc GetLogins(GetLoginsRequest) returns (GetLoginsAck);
+}
+
+service EconomyService {
+  // Applies the delta once per (reason, reference). The balance itself is read with GetPlayer.
+  rpc AdjustBalance(AdjustBalanceRequest) returns (AdjustBalanceAck);
+  rpc GetTransactions(GetTransactionsRequest) returns (GetTransactionsAck);
+}
+
+service MatchService {
+  // One transaction: the match, its teams and participants, every stat block, and the
+  // lifetime totals for the current season and all time.
+  rpc RecordMatch(MatchReport) returns (RecordMatchAck);
+  rpc GetMatch(GetMatchRequest) returns (GetMatchAck);
+  rpc GetMatchHistory(GetMatchHistoryRequest) returns (GetMatchHistoryAck);
+}
+
+service StatsService {
+  rpc GetPlayerStats(GetPlayerStatsRequest) returns (GetPlayerStatsAck);
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardAck);
+  rpc GetLeaderboardPosition(GetLeaderboardPositionRequest) returns (GetLeaderboardPositionAck);
+  rpc GetCurrentSeason(GetCurrentSeasonRequest) returns (SeasonAck);
+}
+
+message RecordLoginRequest {
+  string playerUuid = 1;
+  string name = 2;
+  optional string ip = 3;
+  optional string serverId = 4;
+}
+
+message GetPlayerRequest {
+  oneof key {
+    string playerUuid = 1;
+    string name = 2; // case-insensitive, current name only
+  }
+}
+
+// player is absent when no such player exists.
+message PlayerAck {
+  bool success = 1;
+  string error = 2;
+  Player player = 3;
+}
+
+message GetLoginsRequest {
+  string playerUuid = 1;
+  int32 limit = 2;
+}
+
+message GetLoginsAck {
+  bool success = 1;
+  string error = 2;
+  repeated PlayerLogin logins = 3; // newest first
+}
+
+message AdjustBalanceRequest {
+  string playerUuid = 1;
+  int64 delta = 2;
+  TransactionReason reason = 3;
+  optional string reference = 4; // what this pays for: a match id, a casino wallet id, a purchase id
+}
+
+enum AdjustmentOutcome {
+  ADJUSTMENT_OUTCOME_UNSPECIFIED = 0;
+  ADJUSTMENT_OUTCOME_APPLIED = 1;
+  ADJUSTMENT_OUTCOME_DUPLICATE = 2;    // the reference was already applied; transaction is that row
+  ADJUSTMENT_OUTCOME_INSUFFICIENT = 3; // the balance would have gone negative
+  ADJUSTMENT_OUTCOME_UNKNOWN_PLAYER = 4;
+}
+
+message AdjustBalanceAck {
+  bool success = 1;
+  string error = 2;
+  AdjustmentOutcome outcome = 3;
+  DplumeTransaction transaction = 4; // set for APPLIED and DUPLICATE
+}
+
+message GetTransactionsRequest {
+  string playerUuid = 1;
+  int32 limit = 2;
+}
+
+message GetTransactionsAck {
+  bool success = 1;
+  string error = 2;
+  repeated DplumeTransaction transactions = 3; // newest first
+}
+
+enum RecordOutcome {
+  RECORD_OUTCOME_UNSPECIFIED = 0;
+  RECORD_OUTCOME_RECORDED = 1;
+  RECORD_OUTCOME_DUPLICATE = 2; // this match id was already recorded; nothing changed
+}
+
+message RecordMatchAck {
+  bool success = 1;
+  string error = 2;
+  RecordOutcome outcome = 3;
+  int32 seasonId = 4;
+}
+
+message GetMatchRequest {
+  string matchId = 1;
+}
+
+// match is absent when no such match exists.
+message GetMatchAck {
+  bool success = 1;
+  string error = 2;
+  MatchDetail match = 3;
+}
+
+message GetMatchHistoryRequest {
+  string playerUuid = 1;
+  int32 limit = 2;
+}
+
+message GetMatchHistoryAck {
+  bool success = 1;
+  string error = 2;
+  repeated Match matches = 3; // most recently recorded first
+}
+
+message GetPlayerStatsRequest {
+  string playerUuid = 1;
+  ServerAcceptedType gameMode = 2;
+  int32 seasonId = 3; // 0 for all time
+}
+
+message GetPlayerStatsAck {
+  bool success = 1;
+  string error = 2;
+  PlayerStats stats = 3;
+}
+
+message GetLeaderboardRequest {
+  Board board = 1;
+  ServerAcceptedType gameMode = 2;
+  int32 seasonId = 3;
+  int32 limit = 4;  // clamped to 100
+  int32 offset = 5;
+}
+
+message GetLeaderboardAck {
+  bool success = 1;
+  string error = 2;
+  repeated LeaderboardEntry entries = 3;
+  int32 size = 4; // players on the board
+}
+
+message GetLeaderboardPositionRequest {
+  Board board = 1;
+  ServerAcceptedType gameMode = 2;
+  int32 seasonId = 3;
+  string playerUuid = 4;
+}
+
+// entry is absent when the player is not on the board.
+message GetLeaderboardPositionAck {
+  bool success = 1;
+  string error = 2;
+  LeaderboardEntry entry = 3;
+}
+
+message GetCurrentSeasonRequest {
+}
+
+message SeasonAck {
+  bool success = 1;
+  string error = 2;
+  Season season = 3;
+}

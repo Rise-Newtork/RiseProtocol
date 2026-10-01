@@ -61,3 +61,14 @@ enum GameStatus {
   ENDED = 6;
   SERVER_CLOSING = 7;
 }
+
+// The weapon buckets combat stats are tracked in. OTHER is fists, environment and anything unrecognised.
+enum WeaponFamily {
+  WEAPON_FAMILY_UNSPECIFIED = 0;
+  WEAPON_FAMILY_SWORD = 1;
+  WEAPON_FAMILY_DAGGER = 2;
+  WEAPON_FAMILY_MACE = 3;
+  WEAPON_FAMILY_AXE = 4;
+  WEAPON_FAMILY_BOW = 5;
+  WEAPON_FAMILY_OTHER = 6;
+}

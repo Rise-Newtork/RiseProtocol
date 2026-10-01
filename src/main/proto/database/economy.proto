@@ -1,0 +1,27 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+enum TransactionReason {
+  TRANSACTION_REASON_UNSPECIFIED = 0;
+  TRANSACTION_REASON_MATCH_REWARD = 1;
+  TRANSACTION_REASON_CASINO = 2;
+  TRANSACTION_REASON_SHOP = 3;
+  TRANSACTION_REASON_ACHIEVEMENT = 4;
+  TRANSACTION_REASON_ADMIN = 5;
+}
+
+// One row of the D'Plume ledger.
+message DplumeTransaction {
+  int64 transactionId = 1;
+  string playerUuid = 2;
+  int64 delta = 3;
+  int64 balanceAfter = 4;
+  TransactionReason reason = 5;
+  optional string reference = 6;
+  google.protobuf.Timestamp createdAt = 7;
+}

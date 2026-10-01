@@ -1,0 +1,108 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+import "common/common.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// GAME is a real match. WINDOW is one flush from an open arena such as KitPvP: the server
+// aggregates for a few minutes, then reports the window as a match with one team per player.
+enum MatchKind {
+  MATCH_KIND_UNSPECIFIED = 0;
+  MATCH_KIND_GAME = 1;
+  MATCH_KIND_WINDOW = 2;
+}
+
+// Everything a server sends about one finished match or window. The matchmaker stamps the
+// season. The id is minted by the server, so a retried report is acknowledged as a duplicate
+// and changes nothing.
+message MatchReport {
+  string matchId = 1;
+  ServerAcceptedType gameMode = 2;
+  MatchKind kind = 3;
+  optional string map = 4;
+  string serverId = 5;
+  google.protobuf.Timestamp startedAt = 6;
+  google.protobuf.Timestamp endedAt = 7;
+  repeated Team teams = 8;
+  // Match-level facts only one mode has.
+  oneof modeDetails {
+    DuelMatch duel = 9;
+  }
+}
+
+// A solo player is a team of one. Placement is 1 for the winners and absent when the mode has
+// no placements, such as a window.
+message Team {
+  int32 teamNo = 1;
+  optional int32 placement = 2;
+  repeated Participant participants = 3;
+}
+
+// Combat stats are shared by every fighting mode; the mode-specific block is at most one.
+// Leave a block out and nothing is written for it.
+message Participant {
+  string playerUuid = 1;
+  string name = 2;
+  CombatStats combat = 3;
+  oneof modeStats {
+    DuelStats duel = 4;
+    BossStats boss = 5;
+  }
+}
+
+// Only the families with something to report need to be present.
+message CombatStats {
+  repeated WeaponStats weapons = 1;
+}
+
+message WeaponStats {
+  WeaponFamily family = 1;
+  int64 kills = 2;
+  int64 deaths = 3;
+  double damageDone = 4;
+  double damageTaken = 5;
+}
+
+message DuelMatch {
+  int32 bestOf = 1;
+  optional string ladder = 2;
+}
+
+message DuelStats {
+  int64 roundsWon = 1;
+  int64 roundsLost = 2;
+}
+
+// One boss attempt. hpPctLeft is the player's health at the killing blow, so only a win has it.
+message BossStats {
+  bool won = 1;
+  int64 damage = 2;
+  int64 durationMs = 3;
+  int32 damagePct = 4;
+  optional int32 hpPctLeft = 5;
+}
+
+// A recorded match as stored.
+message Match {
+  string matchId = 1;
+  ServerAcceptedType gameMode = 2;
+  MatchKind kind = 3;
+  int32 seasonId = 4;
+  optional string map = 5;
+  optional string serverId = 6;
+  google.protobuf.Timestamp startedAt = 7;
+  google.protobuf.Timestamp endedAt = 8;
+  google.protobuf.Timestamp recordedAt = 9;
+}
+
+// A match with everything recorded for it; participant names are the players' current names.
+message MatchDetail {
+  Match match = 1;
+  repeated Team teams = 2;
+  oneof modeDetails {
+    DuelMatch duel = 3;
+  }
+}

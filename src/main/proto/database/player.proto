@@ -1,0 +1,24 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+message Player {
+  string playerUuid = 1;
+  string name = 2;
+  repeated string pastNames = 3;
+  google.protobuf.Timestamp firstJoin = 4;
+  google.protobuf.Timestamp lastJoin = 5;
+  int64 dplumes = 6;
+}
+
+message PlayerLogin {
+  string playerUuid = 1;
+  string name = 2; // the name at that login, so a rename is dated
+  google.protobuf.Timestamp loggedInAt = 3;
+  optional string ip = 4;
+  optional string serverId = 5;
+}

@@ -1,0 +1,66 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+import "common/common.proto";
+import "database/match.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Season 0 is the all-time row every stat is also written to.
+message Season {
+  int32 seasonId = 1;
+  string name = 2;
+  google.protobuf.Timestamp startedAt = 3;
+}
+
+message PlayerMatchStats {
+  int64 games = 1;
+  int64 wins = 2;
+  optional int32 bestPlacement = 3;
+}
+
+// Lifetime boss totals. The bests come from wins only, so they are absent until the first clear.
+message PlayerBossStats {
+  int64 wins = 1;
+  int64 losses = 2;
+  int64 damage = 3;
+  int64 totalMs = 4;
+  optional int64 bestClearMs = 5;
+  int32 bestDamagePct = 6;
+  optional int32 bestHpPct = 7;
+}
+
+// One player's lifetime totals in one game mode and season. Blocks the player has never
+// produced are absent.
+message PlayerStats {
+  string playerUuid = 1;
+  ServerAcceptedType gameMode = 2;
+  int32 seasonId = 3;
+  PlayerMatchStats match = 4;
+  CombatStats combat = 5;
+  oneof modeStats {
+    DuelStats duel = 6;
+    PlayerBossStats boss = 7;
+  }
+}
+
+enum Board {
+  BOARD_UNSPECIFIED = 0;
+  BOARD_MATCH_WINS = 1;
+  BOARD_MATCH_GAMES = 2;
+  BOARD_COMBAT_KILLS = 3;
+  BOARD_COMBAT_DEATHS = 4;
+  BOARD_COMBAT_DAMAGE_DONE = 5;
+  BOARD_BOSS_WINS = 6;
+  BOARD_BOSS_BEST_CLEAR_MS = 7; // ascending: the fastest clear is first
+}
+
+// Positions are unique: ties are broken by player uuid, and a page agrees with GetLeaderboardPosition.
+message LeaderboardEntry {
+  int32 position = 1;
+  string playerUuid = 2;
+  string name = 3;
+  double value = 4; // integral for every board except damage
+}
