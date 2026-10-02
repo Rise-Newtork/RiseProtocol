@@ -1,23 +1,55 @@
 syntax = "proto3";
 package life;
 
+import "google/protobuf/duration.proto";
+import "common/common.proto";
+
 option java_package = "com.risehytale.api";
 option java_multiple_files = true;
 
-// Hosted by the control plane; the manager mod inside a game container calls SignIn once
-// the server is up and SignOut as it shuts down. containerName comes from servermeta.json.
+// Hosted by the control plane; the manager mod inside a container calls SignIn once the server
+// is up, Heartbeat every interval after that, and SignOut as it shuts down. containerName comes
+// from servermeta.json. A server that misses heartbeats is treated as dead: removed from routing,
+// destroyed through its creator and replaced.
 service ServerRegistryService {
   rpc SignIn(ServerSignInRequest) returns (ServerSignInAck);
+  rpc Heartbeat(ServerHeartbeat) returns (ServerHeartbeatAck);
   rpc SignOut(ServerSignOutRequest) returns (ServerSignOutAck);
 }
 
 message ServerSignInRequest {
   string containerName = 1;
+  string pluginVersion = 2;   // the manager mod's version
+  string configsRevision = 3; // the configs bucket revision the server booted with; blank when unknown
 }
 
 message ServerSignInAck {
   bool success = 1;
   string error = 2;
+  google.protobuf.Duration heartbeatInterval = 3;
+}
+
+message ServerHeartbeat {
+  string containerName = 1;
+  ServerState state = 2;
+  int64 sequence = 3; // 1 at process start; a reset means the server restarted under the same name
+  ServerHealth health = 4;
+}
+
+// What the matchmaker cannot learn elsewhere: the proxy already knows the players.
+message ServerHealth {
+  double tickMillis = 1;   // mean tick duration since the last heartbeat
+  int64 heapUsedBytes = 2;
+  int64 heapMaxBytes = 3;
+}
+
+// known=false means this matchmaker has no record of the container, which happens after it
+// restarts; the server then signs in again.
+message ServerHeartbeatAck {
+  bool success = 1;
+  string error = 2;
+  bool known = 3;
+  google.protobuf.Duration heartbeatInterval = 4;
 }
 
 message ServerSignOutRequest {

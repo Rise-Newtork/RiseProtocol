@@ -80,6 +80,18 @@ message ContainerMeta {
   }
 }
 
+message ContainerExitReport {
+  NodeMeta nodeMeta = 1;
+  string containerName = 2;
+  int32 exitCode = 3;
+  string summary = 4; // what the creator logged about the exit
+}
+
+message ContainerExitAck {
+  bool success = 1;
+  string error = 2;
+}
+
 message DestroyContainerRequest {
   string containerName = 1; // from SetupContainerAck
   string reason = 2;

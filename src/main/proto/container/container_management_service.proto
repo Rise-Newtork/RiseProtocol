@@ -6,11 +6,13 @@ import "container/container_management.proto";
 option java_package = "com.risehytale.api";
 option java_multiple_files = true;
 
-// Hosted by the control plane; a node's container creator calls it on startup
-// and again on shutdown.
+// Hosted by the control plane; a node's container creator calls it on startup, again on
+// shutdown, and whenever a container it created exits on its own.
 service ContainerRegistryService {
   rpc RegisterContainerCreator(RegisterContainerCreatorRequest) returns (RegisterContainerCreatorAck);
   rpc DeregisterContainerCreator(DeregisterContainerCreatorRequest) returns (DeregisterContainerCreatorAck);
+  // A container stopped without a DestroyContainer call: a crash, an OOM kill, a server that quit.
+  rpc ReportContainerExit(ContainerExitReport) returns (ContainerExitAck);
 }
 
 // Hosted by each container creator; the control plane calls it.

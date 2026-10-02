@@ -62,6 +62,15 @@ enum GameStatus {
   SERVER_CLOSING = 7;
 }
 
+// Where a server is in its life, as it reports it in each heartbeat. OPEN is the only state
+// players are routed to.
+enum ServerState {
+  SERVER_STATE_UNSPECIFIED = 0;
+  SERVER_STATE_STARTING = 1;
+  SERVER_STATE_OPEN = 2;
+  SERVER_STATE_CLOSING = 3;
+}
+
 // The weapon buckets combat stats are tracked in. OTHER is fists, environment and anything unrecognised.
 enum WeaponFamily {
   WEAPON_FAMILY_UNSPECIFIED = 0;
