@@ -40,6 +40,12 @@ service StatsService {
   rpc GetCurrentSeason(GetCurrentSeasonRequest) returns (SeasonAck);
 }
 
+service AchievementService {
+  rpc GetAchievements(GetAchievementsRequest) returns (GetAchievementsAck);
+  // Adds the id once per player. A second call for the same pair is a DUPLICATE, not an error.
+  rpc ClaimAchievement(ClaimAchievementRequest) returns (ClaimAchievementAck);
+}
+
 message RecordLoginRequest {
   string playerUuid = 1;
   string name = 2;
@@ -188,4 +194,33 @@ message SeasonAck {
   bool success = 1;
   string error = 2;
   Season season = 3;
+}
+
+message GetAchievementsRequest {
+  string playerUuid = 1;
+}
+
+message GetAchievementsAck {
+  bool success = 1;
+  string error = 2;
+  repeated string achievementIds = 3;
+}
+
+enum ClaimOutcome {
+  CLAIM_OUTCOME_UNSPECIFIED = 0;
+  CLAIM_OUTCOME_CLAIMED = 1;
+  CLAIM_OUTCOME_DUPLICATE = 2; // the player already had it; nothing changed
+  CLAIM_OUTCOME_UNKNOWN_PLAYER = 3;
+}
+
+message ClaimAchievementRequest {
+  string playerUuid = 1;
+  string achievementId = 2;
+}
+
+message ClaimAchievementAck {
+  bool success = 1;
+  string error = 2;
+  ClaimOutcome outcome = 3;
+  repeated string achievementIds = 4; // the player's whole list after the call
 }
