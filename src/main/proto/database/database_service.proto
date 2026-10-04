@@ -42,7 +42,8 @@ service StatsService {
 
 service AchievementService {
   rpc GetAchievements(GetAchievementsRequest) returns (GetAchievementsAck);
-  // Adds the id once per player. A second call for the same pair is a DUPLICATE, not an error.
+  // Adds each id once per player, in one transaction. An id the player already had is a DUPLICATE,
+  // not an error, so the whole call is safe to retry.
   rpc ClaimAchievement(ClaimAchievementRequest) returns (ClaimAchievementAck);
 }
 
@@ -215,12 +216,17 @@ enum ClaimOutcome {
 
 message ClaimAchievementRequest {
   string playerUuid = 1;
-  string achievementId = 2;
+  repeated string achievementIds = 2; // one or many; duplicates within the call collapse
+}
+
+message AchievementClaim {
+  string achievementId = 1;
+  ClaimOutcome outcome = 2;
 }
 
 message ClaimAchievementAck {
   bool success = 1;
   string error = 2;
-  ClaimOutcome outcome = 3;
-  repeated string achievementIds = 4; // the player's whole list after the call
+  repeated AchievementClaim claims = 3; // one per requested id, in request order
+  repeated string achievementIds = 4;   // the player's whole list after the call
 }
