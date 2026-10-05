@@ -16,6 +16,35 @@ message RegisterContainerCreatorRequest {
   int32 maxContainers = 5;
   int32 memoryBudgetMb = 6; // total memory the node gives to game containers; 0 means uncapped
   repeated HubServerType acceptedHubTypes = 7; // hub kinds this node runs
+  repeated RunningContainer containers = 8; // what the node already runs, for the control plane to adopt
+}
+
+// What a node is running right now, as its creator sees it. Sent on registration and in every
+// heartbeat so a control plane that restarted can adopt the containers it has forgotten rather
+// than ask for duplicates of them.
+message RunningContainer {
+  string containerName = 1;
+  string requestId = 2;
+  repeated ServerAcceptedType types = 3; // what the creator tracks today; moves to the kind oneof with it
+  IpPort gameEndpoint = 4;
+  IpPort managementEndpoint = 5;
+}
+
+// Sent every heartbeatInterval for as long as the node is up. A creator that stops beating is
+// treated as gone: its containers leave routing and its hub is replaced elsewhere.
+message ContainerCreatorHeartbeat {
+  NodeMeta nodeMeta = 1;
+  int64 sequence = 2; // 1 at process start; a reset means the creator restarted
+  repeated RunningContainer containers = 3;
+}
+
+// known=false means this control plane has no record of the node, which is what a restarted one
+// looks like; the creator registers again and the control plane adopts what it reports.
+message ContainerCreatorHeartbeatAck {
+  bool success = 1;
+  string error = 2;
+  bool known = 3;
+  google.protobuf.Duration heartbeatInterval = 4;
 }
 
 message RegisterContainerCreatorAck {
