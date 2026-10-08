@@ -15,17 +15,42 @@ service PlayerTransferService {
 
 message TransferPlayerRequest {
   string playerUuid = 1;
-  string containerName = 2;
-  IpPort gameEndpoint = 3; // so the proxy needs no registry lookup of its own
+  reserved 2, 3; // containerName and gameEndpoint, now inside destination.backend
   string reason = 4;
+  oneof destination {
+    BackendDestination backend = 5;
+    ReferralDestination referral = 6;
+  }
+}
+
+// Switch which container this proxy relays the player to. Seamless: the client keeps its
+// connection and sees a brief world rebuild.
+message BackendDestination {
+  string containerName = 1;
+  IpPort gameEndpoint = 2; // so the proxy needs no registry lookup of its own
+}
+
+// Send the client itself somewhere else, which is how a player changes proxy: there is no entry
+// server in front of the proxies, so the client dials this address directly and the proxy it
+// lands on asks where the player belongs as it would at any login. A reconnect, not a switch.
+message ReferralDestination {
+  IpPort endpoint = 1;
+  string proxyId = 2; // which proxy this is, for the logs on both sides
+}
+
+enum TransferMethod {
+  TRANSFER_METHOD_UNSPECIFIED = 0;
+  TRANSFER_METHOD_SWITCHED = 1; // the backend was swapped under a live connection
+  TRANSFER_METHOD_REFERRED = 2; // the client was told to dial somewhere else
 }
 
 message TransferPlayerAck {
   bool success = 1;
   string error = 2;
   bool held = 3; // false: this proxy does not hold that player
-  // True once the switch has started. The arrival is the target host's news, not the caller's.
+  // True once the move has started. The arrival is the target's news, not the caller's.
   bool switching = 4;
+  TransferMethod method = 5;
 }
 
 // Hosted by the matchmaker; each proxy signs in, beats, and reports the sessions it holds, so the
@@ -37,6 +62,10 @@ service ProxyRegistryService {
   // Fully qualified: inside a service, a bare name resolves to the method of the same name first.
   rpc ProxyHeartbeat(.life.ProxyHeartbeat) returns (ProxyHeartbeatAck);
   rpc ProxySignOut(ProxySignOutRequest) returns (ProxySignOutAck);
+  // This proxy is going away and wants its players moved off first. The matchmaker picks another
+  // proxy for each and refers them through TransferPlayer, so one path covers draining and any
+  // other reason a player changes proxy.
+  rpc ProxyDraining(ProxyDrainingRequest) returns (ProxyDrainingAck);
   // One event per session change. Fire-and-forget: the heartbeat's full list is the repair.
   rpc ReportPlayerSession(PlayerSessionEvent) returns (PlayerSessionAck);
 }
@@ -83,6 +112,18 @@ message ProxySignOutRequest {
 message ProxySignOutAck {
   bool success = 1;
   string error = 2;
+}
+
+message ProxyDrainingRequest {
+  string proxyId = 1;
+  string reason = 2;
+}
+
+message ProxyDrainingAck {
+  bool success = 1;
+  string error = 2;
+  int32 moving = 3;    // players the matchmaker is referring away
+  int32 stranded = 4;  // players it has nowhere to send; the proxy disconnects them
 }
 
 enum SessionEventType {
