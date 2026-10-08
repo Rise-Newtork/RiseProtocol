@@ -1,0 +1,158 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/duration.proto";
+import "common/common.proto";
+import "game/game.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the matchmaker; a hub mod calls it for the player in front of it.
+service MatchSearchService {
+  rpc JoinQueue(JoinQueueRequest) returns (JoinQueueAck);
+  rpc LeaveQueue(LeaveQueueRequest) returns (LeaveQueueAck);
+  // Everything a game-select menu needs: each mode's rules, whether it is playable now, and the
+  // live counts. A hub renders its menu from this and hard-codes no mode list.
+  rpc GetModes(GetModesRequest) returns (GetModesAck);
+}
+
+message QueuePlayer {
+  string playerUuid = 1;
+  string name = 2;
+}
+
+message JoinQueueRequest {
+  GameMode gameMode = 1;
+  repeated QueuePlayer group = 2; // a solo player is a group of one; a group is never split
+  string containerName = 3;       // the hub they are searching from, so notices come back to it
+  string ladder = 4;              // ranked only; blank otherwise
+}
+
+enum QueueRefusal {
+  QUEUE_REFUSAL_UNSPECIFIED = 0;
+  QUEUE_REFUSAL_ALREADY_QUEUED = 1;
+  QUEUE_REFUSAL_IN_MATCH = 2;
+  QUEUE_REFUSAL_MODE_CLOSED = 3; // no host of that mode signed in, or an admin closed it
+  QUEUE_REFUSAL_GROUP_TOO_BIG = 4;
+  QUEUE_REFUSAL_BAD_REQUEST = 5;
+}
+
+message JoinQueueAck {
+  bool success = 1;
+  string error = 2;
+  QueueRefusal refusal = 3;
+  string ticketId = 4; // this group's place in the queue; what LeaveQueue names
+  int32 queuedPlayers = 5;
+  int32 neededPlayers = 6;
+}
+
+message LeaveQueueRequest {
+  // Either the ticket or any one player in it. A player who does not own the ticket takes only
+  // themselves out of it.
+  string ticketId = 1;
+  string playerUuid = 2;
+  string reason = 3;
+}
+
+message LeaveQueueAck {
+  bool success = 1;
+  string error = 2;
+  bool left = 3;    // false: they were not queued
+  bool refused = 4; // true: the lobby is locked and about to start, so leaving is refused
+}
+
+message GetModesRequest {
+  repeated GameMode gameModes = 1; // empty = every mode the matchmaker knows
+}
+
+// A mode as the matchmaker is configured for it, plus what is happening in it. Mode rules live in
+// matchmaker configuration, so this is the only place a hub learns them.
+message ModeInfo {
+  GameMode gameMode = 1;
+  string label = 2;
+  int32 minPlayers = 3;
+  int32 maxPlayers = 4;
+  int32 maxGroupSize = 5;
+  bool available = 6; // a host of this mode is signed in with room, and it is not closed
+  string unavailableReason = 7;
+  int32 queuedPlayers = 8;
+  int32 playingPlayers = 9;
+  int32 liveMatches = 10;
+}
+
+message GetModesAck {
+  bool success = 1;
+  string error = 2;
+  repeated ModeInfo modes = 3;
+}
+
+// Hosted by every hub mod on its container's management endpoint. The matchmaker holds the whole
+// state of a search and a selection and pushes each phase to whichever hub the player is on, so a
+// player can search from any hub type and the hub only ever presents.
+service HubLobbyService {
+  rpc NotifyQueue(QueueNotice) returns (QueueNoticeAck);
+  // Ask the named players to choose. One call per hub per turn; the matchmaker owns the rules, the
+  // turn order and the tally.
+  rpc PresentSelection(PresentSelectionRequest) returns (PresentSelectionAck);
+}
+
+enum QueueNoticeType {
+  QUEUE_NOTICE_TYPE_UNSPECIFIED = 0;
+  QUEUE_NOTICE_SEARCHING = 1;
+  QUEUE_NOTICE_COUNTDOWN = 2;
+  QUEUE_NOTICE_LOCKED = 3;    // leaving, and moving to another server, are refused from here on
+  QUEUE_NOTICE_CANCELLED = 4; // the lobby fell apart; they are out of the queue
+  QUEUE_NOTICE_LAUNCHING = 5; // the match is ready and they are about to be moved
+  QUEUE_NOTICE_FAILED = 6;    // no match could be started; they are back to searching
+}
+
+message QueueNotice {
+  string lobbyId = 1;
+  GameMode gameMode = 2;
+  QueueNoticeType type = 3;
+  repeated string playerUuids = 4; // only the ones on the hub being called
+  int32 queuedPlayers = 5;
+  int32 neededPlayers = 6;
+  google.protobuf.Duration remaining = 7; // set for COUNTDOWN
+  string message = 8;                     // optional; blank uses the hub's own copy
+}
+
+message QueueNoticeAck {
+  bool success = 1;
+  string error = 2;
+  // Players this hub no longer has. The matchmaker drops them from the lobby rather than waiting
+  // for a disconnect it may never hear about.
+  repeated string missingPlayerUuids = 3;
+}
+
+enum SelectionKind {
+  SELECTION_KIND_UNSPECIFIED = 0;
+  SELECTION_KIND_VOTE = 1; // every player picks one candidate; the matchmaker tallies
+  SELECTION_KIND_BAN = 2;  // one player removes candidates
+}
+
+message PresentSelectionRequest {
+  string lobbyId = 1;
+  GameMode gameMode = 2;
+  SelectionKind kind = 3;
+  int32 turn = 4;                   // 1-based; a vote is always turn 1
+  repeated string playerUuids = 5;  // who on this hub is being asked
+  repeated MapOffer candidates = 6; // what is still on the table
+  google.protobuf.Duration deadline = 7;
+  int32 picksPerPlayer = 8; // a ban turn may take more than one
+}
+
+message PresentSelectionAck {
+  bool success = 1;
+  string error = 2;
+  // A player who did not answer in time is simply absent, and a hub never invents an answer. The
+  // matchmaker decides what a missing answer means: an abstention in a vote, a random ban in a
+  // ban turn, taken immediately when the player is known to be gone.
+  repeated SelectionChoice choices = 3;
+}
+
+message SelectionChoice {
+  string playerUuid = 1;
+  repeated string mapIds = 2;
+}

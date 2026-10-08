@@ -1,0 +1,75 @@
+syntax = "proto3";
+package life;
+
+import "common/common.proto";
+import "database/match.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// What a server can host: the modes it has mods and configs for, the maps it found on disk for
+// each, and how many matches it will hold. Sent at sign-in. This is capability, never policy: a
+// mode's rules - minimum players, countdown, selection, team size - are matchmaker configuration,
+// so two hosts of one mode cannot disagree about how it is played.
+message HostCapabilities {
+  repeated ModeSupport modes = 1;
+  int32 maxMatches = 2; // across every mode; 0 means only the per-mode numbers apply
+}
+
+message ModeSupport {
+  GameMode gameMode = 1;
+  repeated MapOffer maps = 2;
+  // A resource limit rather than a rule: a stick game arena costs more than a duel pit. 0 means
+  // no per-mode limit.
+  int32 maxMatches = 3;
+}
+
+message MapOffer {
+  string mapId = 1;       // the instance template id, e.g. "sg_cargo"
+  string displayName = 2; // what a vote screen shows
+  int32 maxPlayers = 3;   // how many spawns the map has; a property of the map, not the mode
+  // False when the template is present but unplayable: no map config, too few spawns. Reported
+  // rather than hidden, so a log can say why a map is never chosen, and never selected.
+  bool usable = 4;
+}
+
+message RosterEntry {
+  string playerUuid = 1;
+  string name = 2;
+  int32 teamNo = 3; // 1-based; a solo mode sends one team per player, as the match record stores it
+}
+
+// Match-level settings the host needs, chosen by the matchmaker from its mode config and whatever
+// the hub's selection produced. Typed where something shared reads it, generic otherwise.
+message MatchOptions {
+  MatchSeries series = 1;        // round modes: bestOf and the ladder
+  repeated Setting settings = 2; // anything else, read only by that mode's own module
+}
+
+message Setting {
+  string key = 1;
+  string value = 2;
+}
+
+// Who started a match, which is what an unknown-match answer means.
+enum MatchOrigin {
+  MATCH_ORIGIN_UNSPECIFIED = 0;
+  MATCH_ORIGIN_LOBBY = 1;  // the matchmaker started it from a lobby and owns the match id
+  MATCH_ORIGIN_SERVER = 2; // the host started it and minted the id: a window, a boss attempt
+}
+
+// One match as its host sees it. Pushed on every status change and carried in every heartbeat, so
+// a matchmaker that restarted adopts what is running instead of duplicating or orphaning it.
+message MatchSummary {
+  string matchId = 1;
+  GameMode gameMode = 2;
+  MatchKind kind = 3;
+  MatchOrigin origin = 4;
+  string mapId = 5; // blank for a match with no map, such as a window
+  GameStatus status = 6;
+  // Everyone the match still holds a place for. A player who drops out of this list is free to
+  // queue again as far as the matchmaker is concerned.
+  repeated string claimedPlayerUuids = 7;
+  repeated string presentPlayerUuids = 8; // in the match right now
+  int64 startedAtMillis = 9;
+}

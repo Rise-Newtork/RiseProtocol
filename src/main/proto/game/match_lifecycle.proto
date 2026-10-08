@@ -1,0 +1,226 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/duration.proto";
+import "common/common.proto";
+import "database/match.proto";
+import "game/game.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by every server mod on its ContainerMeta.managementEndpoint; the matchmaker calls it.
+// The mod's sign-in is what says it is up, and the creator's setup ack already gave the
+// matchmaker the endpoint, so nothing else has to be discovered.
+//
+// One lifecycle for every kind of match: an instancer running a stick game arena, a hub running a
+// KitPvP window, a hub running a boss attempt. A host that only opens its own matches still
+// implements the service and refuses StartMatch with MATCH_REFUSAL_UNKNOWN_MODE.
+service MatchHostService {
+  // Opens a match and answers once it is ready for players, which is what lets the matchmaker
+  // move them. Idempotent on matchId: a retried call for a match already open answers
+  // duplicate=true and opens nothing.
+  rpc StartMatch(StartMatchRequest) returns (StartMatchAck);
+
+  // Tears a match down before it finished: the lobby evaporated, the matchmaker gave up, an admin
+  // closed the mode. The host still sends its terminal report.
+  rpc CancelMatch(CancelMatchRequest) returns (CancelMatchAck);
+
+  // One player is no longer part of this match: they left the queue, forfeited, or could not be
+  // moved here. The match stops holding their place.
+  rpc ReleaseParticipant(ReleaseParticipantRequest) returns (ReleaseParticipantAck);
+
+  rpc ReserveSpectator(ReserveSpectatorRequest) returns (ReserveSpectatorAck);
+
+  // What this host is running; the reconciliation call after a matchmaker restart.
+  rpc ListMatches(ListMatchesRequest) returns (ListMatchesAck);
+}
+
+message StartMatchRequest {
+  // Minted by the matchmaker. It is the lobby id, the match's identity on the host, the routing
+  // key and the matchId the finished match is recorded under: one id end to end.
+  string matchId = 1;
+  GameMode gameMode = 2;
+  MatchKind kind = 3;
+  string mapId = 4; // blank lets the host pick at random among its usable maps for the mode
+  repeated RosterEntry roster = 5;
+  MatchOptions options = 6;
+  // Mode policy pushed down from the matchmaker's config, so the host holds no rules of its own.
+  // 0 and absent take the host's defaults.
+  int32 minPlayers = 7;
+  google.protobuf.Duration arrivalTimeout = 8;
+}
+
+enum MatchRefusal {
+  MATCH_REFUSAL_UNSPECIFIED = 0;
+  MATCH_REFUSAL_UNKNOWN_MODE = 1;  // no module for that mode on this host
+  MATCH_REFUSAL_NO_USABLE_MAP = 2; // the named map is unknown or unusable, with no fallback
+  MATCH_REFUSAL_AT_CAPACITY = 3;   // the mode's or the host's match limit
+  MATCH_REFUSAL_PLAYER_BUSY = 4;   // someone on the roster is already in a match here
+  MATCH_REFUSAL_BAD_REQUEST = 5;   // empty or malformed roster, duplicate players
+  MATCH_REFUSAL_WORLD_FAILED = 6;  // the engine could not open the template
+  MATCH_REFUSAL_CLOSING = 7;
+}
+
+message StartMatchAck {
+  bool success = 1;
+  string error = 2;
+  MatchRefusal refusal = 3; // set when success is false
+  string matchId = 4;
+  string mapId = 5;         // what was actually opened, which matters when mapId was blank
+  bool duplicate = 6;       // already open; nothing new was created
+}
+
+message CancelMatchRequest {
+  string matchId = 1;
+  string reason = 2;
+}
+
+message CancelMatchAck {
+  bool success = 1;
+  string error = 2;
+  bool known = 3; // false: no such match here, which the caller treats as already gone
+}
+
+message ReleaseParticipantRequest {
+  string matchId = 1;
+  string playerUuid = 2;
+  string reason = 3;
+}
+
+message ReleaseParticipantAck {
+  bool success = 1;
+  string error = 2;
+  bool released = 3; // false: that player was not held by this match
+}
+
+message ReserveSpectatorRequest {
+  string matchId = 1;
+  string playerUuid = 2;
+}
+
+message ReserveSpectatorAck {
+  bool success = 1;
+  string error = 2;
+  // False is an ordinary answer, not an error: the match is unknown, closing, or the player is on
+  // its roster. The caller tries somewhere else.
+  bool reserved = 3;
+}
+
+message ListMatchesRequest {
+}
+
+message ListMatchesAck {
+  bool success = 1;
+  string error = 2;
+  string containerName = 3;
+  repeated MatchSummary matches = 4;
+}
+
+// Hosted by the matchmaker; every server mod calls it.
+service MatchRegistryService {
+  // Fire-and-forget on every GameStatus change. The periodic full picture travels in
+  // ServerHeartbeat, so a lost report here costs nothing.
+  rpc ReportMatchStatus(MatchStatusReport) returns (MatchStatusAck);
+
+  // The one terminal report a match is allowed. Frees the slot, releases the participants and
+  // records the match, in one call. Idempotent on matchId.
+  rpc ReportMatchFinished(MatchFinishedReport) returns (MatchFinishedAck);
+
+  // The fallback when a player arrives on a host that does not recognise them: a reconnect, a
+  // late arrival, a spectator, anyone after a container restart.
+  rpc GetPlayerPlacement(GetPlayerPlacementRequest) returns (GetPlayerPlacementAck);
+
+  // The host is done with these players. The matchmaker picks where each goes and has the proxy
+  // holding them switch them: a container cannot move a player itself, because the proxy
+  // terminates the client connection and container game ports are not reachable by a client.
+  rpc RequestPlayerReturn(PlayerReturnRequest) returns (PlayerReturnAck);
+}
+
+message MatchStatusReport {
+  string containerName = 1;
+  MatchSummary match = 2;
+}
+
+message MatchStatusAck {
+  bool success = 1;
+  string error = 2;
+  // False: no record of this match, which is what a restarted matchmaker looks like to a host
+  // mid-match. What to do depends on MatchSummary.origin, and the host decides. LOBBY: the
+  // matchmaker started it and has forgotten it, so nobody can be routed to it and no result will
+  // be collected - cancel it and report. SERVER: the host started it, so carry on; the matchmaker
+  // adopts it from this report.
+  bool known = 3;
+}
+
+enum MatchOutcome {
+  MATCH_OUTCOME_UNSPECIFIED = 0;
+  MATCH_OUTCOME_FINISHED = 1;  // played to a result; a forfeit is still a result
+  MATCH_OUTCOME_ABORTED = 2;   // started and could not finish: too few arrived, the world died
+  MATCH_OUTCOME_CANCELLED = 3; // never started: cancelled, or nobody turned up
+}
+
+message MatchFinishedReport {
+  string matchId = 1;
+  GameMode gameMode = 2;
+  MatchOutcome outcome = 3;
+  string reason = 4; // for logs; set for anything but FINISHED
+  int64 startedAtMillis = 5;
+  int64 endedAtMillis = 6;
+  // The stats flush, recorded by the matchmaker inside this call. Absent for CANCELLED and for an
+  // abort with nothing worth recording. match.matchId must equal matchId.
+  MatchReport match = 7;
+  repeated string releasedPlayerUuids = 8;
+}
+
+message MatchFinishedAck {
+  bool success = 1;
+  string error = 2;
+  bool duplicate = 3; // already reported; nothing changed
+  // How the embedded match went in. Recording can fail while the lifecycle half succeeds - the
+  // slot is freed either way - so success=true with a recorded value that says what happened is a
+  // normal answer, and the host retries only on success=false.
+  RecordOutcome recorded = 4;
+  int32 seasonId = 5;
+}
+
+message GetPlayerPlacementRequest {
+  string playerUuid = 1;
+  string containerName = 2; // who is asking, so the answer can say "not here"
+}
+
+enum Placement {
+  PLACEMENT_UNSPECIFIED = 0;
+  PLACEMENT_MATCH = 1;      // they belong in matchId on the asking host
+  PLACEMENT_SPECTATOR = 2;  // admit them to matchId as a spectator
+  PLACEMENT_ELSEWHERE = 3;  // they belong on containerName; the asker moves them off
+  PLACEMENT_UNKNOWN = 4;    // no record at all; the asker moves them off
+}
+
+message GetPlayerPlacementAck {
+  bool success = 1;
+  string error = 2;
+  Placement placement = 3;
+  string matchId = 4;       // set for MATCH and SPECTATOR
+  string containerName = 5; // set for ELSEWHERE
+}
+
+message PlayerReturnRequest {
+  repeated string playerUuids = 1;
+  string fromContainerName = 2;
+  string fromMatchId = 3;             // blank when they were not in a match
+  HubServerType preferredHubType = 4; // UNSPECIFIED takes the network default
+  string reason = 5;
+}
+
+message PlayerReturnAck {
+  bool success = 1;
+  string error = 2;
+  repeated PlayerReturnResult results = 3; // one per requested player, in request order
+}
+
+message PlayerReturnResult {
+  string playerUuid = 1;
+  bool moving = 2;  // a proxy has been asked to switch them
+  string error = 3; // why not: offline, no hub with room, no proxy holds them
+}

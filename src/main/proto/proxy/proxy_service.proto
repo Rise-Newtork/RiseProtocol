@@ -1,0 +1,107 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/duration.proto";
+import "common/common.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by each proxy; the matchmaker calls it to move a player that proxy already holds. Built
+// on the proxy's in-place backend switch, so the player never reconnects.
+service PlayerTransferService {
+  rpc TransferPlayer(TransferPlayerRequest) returns (TransferPlayerAck);
+}
+
+message TransferPlayerRequest {
+  string playerUuid = 1;
+  string containerName = 2;
+  IpPort gameEndpoint = 3; // so the proxy needs no registry lookup of its own
+  string reason = 4;
+}
+
+message TransferPlayerAck {
+  bool success = 1;
+  string error = 2;
+  bool held = 3; // false: this proxy does not hold that player
+  // True once the switch has started. The arrival is the target host's news, not the caller's.
+  bool switching = 4;
+}
+
+// Hosted by the matchmaker; each proxy signs in, beats, and reports the sessions it holds, so the
+// matchmaker knows which proxy to ask for any given player. The proxy is the authority on who is
+// online: it owns the client connection, so its disconnect events are what let a player be
+// dropped from a queue, a selection or a boarding roster without any server noticing.
+service ProxyRegistryService {
+  rpc ProxySignIn(ProxySignInRequest) returns (ProxySignInAck);
+  // Fully qualified: inside a service, a bare name resolves to the method of the same name first.
+  rpc ProxyHeartbeat(.life.ProxyHeartbeat) returns (ProxyHeartbeatAck);
+  rpc ProxySignOut(ProxySignOutRequest) returns (ProxySignOutAck);
+  // One event per session change. Fire-and-forget: the heartbeat's full list is the repair.
+  rpc ReportPlayerSession(PlayerSessionEvent) returns (PlayerSessionAck);
+}
+
+message ProxySignInRequest {
+  string proxyId = 1; // stable for the life of the process
+  NodeMeta nodeMeta = 2;
+  IpPort transferEndpoint = 3; // where PlayerTransferService is served
+  IpPort publicEndpoint = 4;   // what players connect to
+  string version = 5;
+}
+
+message ProxySignInAck {
+  bool success = 1;
+  string error = 2;
+  google.protobuf.Duration heartbeatInterval = 3;
+}
+
+message ProxyHeartbeat {
+  string proxyId = 1;
+  int64 sequence = 2; // 1 at process start; a reset means the proxy restarted
+  repeated ProxySession sessions = 3; // every player held, and where. Complete, never a delta.
+}
+
+message ProxySession {
+  string playerUuid = 1;
+  string username = 2;
+  string containerName = 3; // blank while the player has no backend yet
+  int64 sinceMillis = 4;
+}
+
+message ProxyHeartbeatAck {
+  bool success = 1;
+  string error = 2;
+  bool known = 3; // false: no record of this proxy; it signs in again
+  google.protobuf.Duration heartbeatInterval = 4;
+}
+
+message ProxySignOutRequest {
+  string proxyId = 1;
+  string reason = 2;
+}
+
+message ProxySignOutAck {
+  bool success = 1;
+  string error = 2;
+}
+
+enum SessionEventType {
+  SESSION_EVENT_TYPE_UNSPECIFIED = 0;
+  SESSION_EVENT_CONNECTED = 1;      // authenticated on this proxy, no backend yet
+  SESSION_EVENT_BACKEND_JOINED = 2; // now relayed to containerName
+  SESSION_EVENT_DISCONNECTED = 3;
+}
+
+message PlayerSessionEvent {
+  string proxyId = 1;
+  string playerUuid = 2;
+  string username = 3;
+  SessionEventType type = 4;
+  string containerName = 5; // set for BACKEND_JOINED
+  int64 atMillis = 6;
+}
+
+message PlayerSessionAck {
+  bool success = 1;
+  string error = 2;
+}

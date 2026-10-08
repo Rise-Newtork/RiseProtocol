@@ -1,0 +1,60 @@
+syntax = "proto3";
+package life;
+
+import "common/common.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the control plane. PlayerRoutingService answers where a player goes when they first
+// reach a proxy; this answers the same question mid-session, which is what a hub's PvP NPC, /hub
+// and the tutorial door ask. The matchmaker picks a confirmed server and has the proxy holding
+// the player switch them there: a server never refers a client to a container's game port, since
+// behind the proxy that port is not what the client connects to.
+service ServerDirectoryService {
+  rpc FindServer(FindServerRequest) returns (FindServerAck);
+  rpc MovePlayer(MovePlayerRequest) returns (MovePlayerAck);
+}
+
+message FindServerRequest {
+  // Hubs are typed with HubServerType since v1.9.0, so a hub destination cannot be named by
+  // ServerAcceptedType without using one of its deprecated values.
+  oneof kind {
+    ServerAcceptedType gameType = 1;
+    HubServerType hubType = 2;
+  }
+  string playerUuid = 3; // who is going, so a party can be placed together or picked by region
+}
+
+message FindServerAck {
+  bool success = 1;
+  string error = 2;
+  bool found = 3; // false: nothing of that kind has room; the player is told it is unavailable
+  IpPort gameEndpoint = 4;
+  string containerName = 5;
+}
+
+// Switch a connected player to a container, by name. Acknowledged once the proxy has started the
+// switch; the arrival is seen by the target server, not by the caller.
+message MovePlayerRequest {
+  string playerUuid = 1;
+  string containerName = 2;
+  string reason = 3;
+}
+
+enum MoveRefusal {
+  MOVE_REFUSAL_UNSPECIFIED = 0;
+  // Searching, selecting or boarding. A move out from under an open selection screen is refused
+  // rather than managed; the player cancels their search first.
+  MOVE_REFUSAL_IN_LOBBY = 1;
+  MOVE_REFUSAL_IN_MATCH = 2;
+  MOVE_REFUSAL_NO_SERVER = 3; // nothing of that kind has room
+  MOVE_REFUSAL_OFFLINE = 4;   // no proxy holds them
+  MOVE_REFUSAL_FAILED = 5;    // the proxy refused, or the switch failed
+}
+
+message MovePlayerAck {
+  bool success = 1;
+  string error = 2;
+  MoveRefusal refusal = 3; // set when success is false
+}

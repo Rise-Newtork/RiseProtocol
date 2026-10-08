@@ -26,6 +26,23 @@ enum HubServerType {
   HUB_SERVER_TYPE_TUTORIAL = 3;
 }
 
+// What activity a match, a stat row or a leaderboard belongs to. Deliberately not
+// ServerAcceptedType, which says what a container is: a stat-bearing activity need not be a
+// container type at all - a KitPvP window and a boss attempt both happen on a hub - and one
+// container type hosts several modes, since a duels container runs sumo too.
+enum GameMode {
+  GAMEMODE_UNSPECIFIED = 0;
+  GAMEMODE_STICK_GAME = 1;
+  GAMEMODE_DUEL_1V1 = 2;
+  GAMEMODE_DUEL_2V2 = 3;
+  GAMEMODE_DUEL_3V3 = 4;
+  GAMEMODE_SUMO_1V1 = 5;
+  GAMEMODE_SUMO_2V2 = 6;
+  GAMEMODE_KITPVP = 7; // the open arena in the PvP hub; reported as MATCH_KIND_WINDOW
+  GAMEMODE_PARKOUR = 8;
+  GAMEMODE_BOSS = 9;   // split per boss if there is ever more than one
+}
+
 // What a container runs: a minigame server accepting some game types, or a hub of one kind.
 message GameServerKind {
   repeated ServerAcceptedType types = 1;

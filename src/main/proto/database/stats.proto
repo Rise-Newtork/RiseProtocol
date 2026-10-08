@@ -32,18 +32,17 @@ message PlayerBossStats {
   optional int32 bestHpPct = 7;
 }
 
-// One player's lifetime totals in one game mode and season. Blocks the player has never
-// produced are absent.
+// One player's lifetime totals in one game mode and season. Blocks the player has never produced
+// are absent.
 message PlayerStats {
   string playerUuid = 1;
-  ServerAcceptedType gameMode = 2;
+  GameMode gameMode = 2;
   int32 seasonId = 3;
   PlayerMatchStats match = 4;
   CombatStats combat = 5;
-  oneof modeStats {
-    DuelStats duel = 6;
-    PlayerBossStats boss = 7;
-  }
+  RoundStats rounds = 6;
+  PlayerBossStats boss = 7;
+  repeated Counter counters = 8; // lifetime total per key, aggregated by that key's own rule
 }
 
 enum Board {
@@ -55,6 +54,7 @@ enum Board {
   BOARD_COMBAT_DAMAGE_DONE = 5;
   BOARD_BOSS_WINS = 6;
   BOARD_BOSS_BEST_CLEAR_MS = 7; // ascending: the fastest clear is first
+  BOARD_COUNTER = 8;            // one counter key, named by the request; direction from its rule
 }
 
 // Positions are unique: ties are broken by player uuid, and a page agrees with GetLeaderboardPosition.

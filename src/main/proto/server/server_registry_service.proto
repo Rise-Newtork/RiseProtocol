@@ -3,6 +3,7 @@ package life;
 
 import "google/protobuf/duration.proto";
 import "common/common.proto";
+import "game/game.proto";
 
 option java_package = "com.risehytale.api";
 option java_multiple_files = true;
@@ -21,6 +22,9 @@ message ServerSignInRequest {
   string containerName = 1;
   string pluginVersion = 2;   // the manager mod's version
   string configsRevision = 3; // the configs bucket revision the server booted with; blank when unknown
+  // What this server can host. A server that sends none is signed in and simply never given a
+  // match, which is what a plain hub is.
+  HostCapabilities capabilities = 4;
 }
 
 message ServerSignInAck {
@@ -34,13 +38,18 @@ message ServerHeartbeat {
   ServerState state = 2;
   int64 sequence = 3; // 1 at process start; a reset means the server restarted under the same name
   ServerHealth health = 4;
+  // Every match running right now: the periodic repair for the fire-and-forget status reports, and
+  // how a restarted matchmaker adopts live matches instead of orphaning them.
+  repeated MatchSummary matches = 5;
 }
 
-// What the matchmaker cannot learn elsewhere: the proxy already knows the players.
+// What the matchmaker cannot learn elsewhere.
 message ServerHealth {
   double tickMillis = 1;   // mean tick duration since the last heartbeat
   int64 heapUsedBytes = 2;
   int64 heapMaxBytes = 3;
+  int32 playerCount = 4;   // connected to this container
+  int32 worldCount = 5;    // live worlds, match instances included
 }
 
 // known=false means this matchmaker has no record of the container, which happens after it

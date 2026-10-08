@@ -112,12 +112,6 @@ message GetTransactionsAck {
   repeated DplumeTransaction transactions = 3; // newest first
 }
 
-enum RecordOutcome {
-  RECORD_OUTCOME_UNSPECIFIED = 0;
-  RECORD_OUTCOME_RECORDED = 1;
-  RECORD_OUTCOME_DUPLICATE = 2; // this match id was already recorded; nothing changed
-}
-
 message RecordMatchAck {
   bool success = 1;
   string error = 2;
@@ -149,7 +143,7 @@ message GetMatchHistoryAck {
 
 message GetPlayerStatsRequest {
   string playerUuid = 1;
-  ServerAcceptedType gameMode = 2;
+  GameMode gameMode = 2;
   int32 seasonId = 3; // 0 for all time
 }
 
@@ -161,10 +155,11 @@ message GetPlayerStatsAck {
 
 message GetLeaderboardRequest {
   Board board = 1;
-  ServerAcceptedType gameMode = 2;
+  GameMode gameMode = 2;
   int32 seasonId = 3;
   int32 limit = 4;  // clamped to 100
   int32 offset = 5;
+  string counterKey = 6; // required for BOARD_COUNTER, ignored otherwise
 }
 
 message GetLeaderboardAck {
@@ -176,9 +171,10 @@ message GetLeaderboardAck {
 
 message GetLeaderboardPositionRequest {
   Board board = 1;
-  ServerAcceptedType gameMode = 2;
+  GameMode gameMode = 2;
   int32 seasonId = 3;
   string playerUuid = 4;
+  string counterKey = 5; // required for BOARD_COUNTER
 }
 
 // entry is absent when the player is not on the board.
