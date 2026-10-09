@@ -1,0 +1,138 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/duration.proto";
+import "moderation/moderation.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// Hosted by the matchmaker, called by the proxies. The proxy is the enforcement point: it holds the
+// client connection, so a muted player's chat never reaches a server and a banned one never reaches
+// one at all. Every call goes straight to Postgres. A proxy caches a player's status for a few
+// minutes, which is what makes a punishment issued on one proxy land on all of them without
+// anything being pushed.
+//
+// A name is turned into a uuid with PlayerService.GetPlayer, so there is nothing for that here.
+service PunishmentService {
+  // Everything a proxy needs about one player: the ban that keeps them out, the mute that keeps
+  // them quiet, and their staff role. Called at login and refreshed while they are connected.
+  rpc CheckPlayer(CheckPlayerRequest) returns (CheckPlayerAck);
+  rpc IssuePunishment(IssuePunishmentRequest) returns (PunishmentAck);
+  // Lifts one punishment by id, or whichever of a type is active for a player.
+  rpc RevokePunishment(RevokePunishmentRequest) returns (PunishmentAck);
+  rpc GetPunishments(GetPunishmentsRequest) returns (GetPunishmentsAck);
+  // An automated filter tripped. Recorded only; the ack carries a punishment if a trigger ever
+  // decides on one, so the proxy already has somewhere to act on it.
+  rpc ReportFlag(ReportFlagRequest) returns (ReportFlagAck);
+}
+
+// Staff roles, kept here so a promotion needs no redeploy. A proxy reads a role out of CheckPlayer
+// rather than asking for it; these calls are for whatever administers the list.
+service StaffService {
+  rpc GetStaff(GetStaffRequest) returns (GetStaffAck);
+  rpc SetStaffRole(SetStaffRoleRequest) returns (StaffRoleAck);
+}
+
+message CheckPlayerRequest {
+  string playerUuid = 1;
+}
+
+// ban and mute are absent when nothing of that type is in force. An unknown player is not an error:
+// they are simply unpunished and not staff.
+message CheckPlayerAck {
+  bool success = 1;
+  string error = 2;
+  Punishment ban = 3;
+  Punishment mute = 4;
+  StaffRole role = 5;
+}
+
+message IssuePunishmentRequest {
+  string playerUuid = 1;
+  PunishmentType type = 2;
+  PunishmentCategory category = 3;
+  string reason = 4;
+  optional string actorUuid = 5; // absent = console or automated
+  optional string actorName = 6;
+  // Absent is permanent. A duration rather than an instant, so the matchmaker's clock decides when
+  // it ends and a proxy's skew cannot shorten or extend it.
+  optional google.protobuf.Duration duration = 7;
+  optional string serverId = 8;
+}
+
+message RevokePunishmentRequest {
+  oneof target {
+    string punishmentId = 1;
+    PunishmentTarget active = 2;
+  }
+  optional string actorUuid = 3;
+  optional string actorName = 4;
+  string reason = 5;
+}
+
+enum PunishmentOutcome {
+  PUNISHMENT_OUTCOME_UNSPECIFIED = 0;
+  PUNISHMENT_OUTCOME_ISSUED = 1;
+  PUNISHMENT_OUTCOME_REVOKED = 2;
+  PUNISHMENT_OUTCOME_NOT_FOUND = 3;      // nothing of that type is active, or no such id
+  PUNISHMENT_OUTCOME_UNKNOWN_PLAYER = 4; // no player row; they have never logged in
+}
+
+// punishment is the row written or lifted, absent for NOT_FOUND and UNKNOWN_PLAYER.
+message PunishmentAck {
+  bool success = 1;
+  string error = 2;
+  PunishmentOutcome outcome = 3;
+  Punishment punishment = 4;
+}
+
+message GetPunishmentsRequest {
+  string playerUuid = 1;
+  int32 limit = 2;
+  bool activeOnly = 3;
+}
+
+message GetPunishmentsAck {
+  bool success = 1;
+  string error = 2;
+  repeated Punishment punishments = 3; // newest first
+}
+
+message ReportFlagRequest {
+  string playerUuid = 1;
+  FlagKind kind = 2;
+  string detail = 3; // the message or the word that tripped it, for whoever reads the log
+  optional string serverId = 4;
+}
+
+// punishment is set only once something here decides a trip is worth one. Absent today.
+message ReportFlagAck {
+  bool success = 1;
+  string error = 2;
+  Punishment punishment = 3;
+}
+
+// With no playerUuid, every staff member.
+message GetStaffRequest {
+  optional string playerUuid = 1;
+}
+
+message GetStaffAck {
+  bool success = 1;
+  string error = 2;
+  repeated StaffMember staff = 3;
+}
+
+// STAFF_ROLE_NONE removes the player from the list.
+message SetStaffRoleRequest {
+  string playerUuid = 1;
+  StaffRole role = 2;
+  optional string actorUuid = 3;
+}
+
+message StaffRoleAck {
+  bool success = 1;
+  string error = 2;
+  StaffMember member = 3;
+}

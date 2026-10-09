@@ -1,0 +1,70 @@
+syntax = "proto3";
+package life;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.risehytale.api";
+option java_multiple_files = true;
+
+// One punishment, whatever its length: no expiresAt is permanent, and whether a row still bites is
+// decided when it is read, so a tempmute lapses with nothing sweeping it.
+enum PunishmentType {
+  PUNISHMENT_TYPE_UNSPECIFIED = 0;
+  PUNISHMENT_TYPE_WARN = 1; // a message to the player, no restriction
+  PUNISHMENT_TYPE_MUTE = 2;
+  PUNISHMENT_TYPE_BAN = 3;
+}
+
+// What the punishment was for. Also a permission: the proxy only lets an admin issue an ADMIN one,
+// and only a mod or above a CHEATING one.
+enum PunishmentCategory {
+  PUNISHMENT_CATEGORY_UNSPECIFIED = 0;
+  PUNISHMENT_CATEGORY_CHEATING = 1; // cheating and exploiting
+  PUNISHMENT_CATEGORY_MODERATION = 2;
+  PUNISHMENT_CATEGORY_ADMIN = 3;
+}
+
+enum StaffRole {
+  STAFF_ROLE_UNSPECIFIED = 0;
+  STAFF_ROLE_NONE = 1;
+  STAFF_ROLE_HELPER = 2;
+  STAFF_ROLE_MOD = 3;
+  STAFF_ROLE_ADMIN = 4;
+}
+
+// What an automated filter caught. Nothing punishes on these yet: they are recorded so a trigger
+// can be built on the history rather than on each proxy.
+enum FlagKind {
+  FLAG_KIND_UNSPECIFIED = 0;
+  FLAG_KIND_SPAM = 1;
+  FLAG_KIND_BLOCKED_WORD = 2;
+}
+
+message Punishment {
+  string punishmentId = 1;
+  string playerUuid = 2;
+  PunishmentType type = 3;
+  PunishmentCategory category = 4;
+  string reason = 5;
+  optional string actorUuid = 6; // absent = console or automated
+  optional string actorName = 7;
+  google.protobuf.Timestamp issuedAt = 8;
+  optional google.protobuf.Timestamp expiresAt = 9; // absent = permanent
+  optional google.protobuf.Timestamp revokedAt = 10;
+  optional string revokedBy = 11;
+  optional string revokeReason = 12;
+  optional string serverId = 13; // where it was issued from, for the audit trail
+}
+
+// Names a punishment to lift when the caller has no id, which is all /unban and /unmute know.
+message PunishmentTarget {
+  string playerUuid = 1;
+  PunishmentType type = 2;
+}
+
+message StaffMember {
+  string playerUuid = 1;
+  optional string name = 2; // the player's current name, when one is on record
+  StaffRole role = 3;
+  google.protobuf.Timestamp since = 4;
+}
