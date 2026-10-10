@@ -12,3 +12,7 @@ rise_protocol/
 dist/
 *.egg-info/
 __pycache__/
+
+# Agent-facing files: notes, plans, TODOs and scripts that are not part of the project.
+.local/
+CLAUDE.md
